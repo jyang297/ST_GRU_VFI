@@ -1,0 +1,9 @@
+.*/
+intrain_log/
+model/__pycache__
+model/oldmodel/*
+model/pytorch_mssim
+model/LSTMmodules.py
+model/notused_RIFE_loaded.py
+check.ipynb
+check.py
