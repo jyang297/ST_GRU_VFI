@@ -6,20 +6,9 @@ import torchvision.models as models
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-class EPE(nn.Module):
-    def __init__(self):
-        super(EPE, self).__init__()
-
-    def forward(self, flow, gt, loss_mask):
-        loss_map = (flow - gt.detach()) ** 2
-        loss_map = (loss_map.sum(1, True) + 1e-6) ** 0.5
-        return (loss_map * loss_mask)
-
-
 class Ternary(nn.Module):
     def __init__(self):
-        super(Ternary, self).__init__()
+        super().__init__()
         patch_size = 7
         out_channels = patch_size * patch_size
         self.w = np.eye(out_channels).reshape(

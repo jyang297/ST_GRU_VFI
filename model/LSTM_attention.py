@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import model.laplacian as modelLap
 from model.warplayer import warp
 from model.refine import *
-from model.myContext import *
 from model.loss import *
 from model.myLossset import *
 from model.Pyramid import FeaturePyramid as FPyramid

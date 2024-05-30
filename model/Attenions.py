@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 import math
-# import Attenions
 
 class SELayer(nn.Module):
     """
     Squeeze and Excitation
     Only channel attention.
     """
+
     def __init__(self, channel, reduction=16, pool_mode='avg'):
         super().__init__()
         if pool_mode == 'avg':
@@ -21,12 +21,13 @@ class SELayer(nn.Module):
             nn.Linear(channel // reduction, channel, bias=False),
             nn.Sigmoid()
         )
-    
+
     def forward(self, x):
         b, c, _, _ = x.size()
         y = self.pooling(x).view(b, c)
         y = self.full_connect(y).view(b, c, 1, 1)
         return x * y
+
 
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=7):
@@ -44,14 +45,16 @@ class SpatialAttention(nn.Module):
 
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio = 16, *args, **kwargs) -> None:
+    def __init__(self, in_planes, ratio=16, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.avg_pooling = nn.AdaptiveAvgPool2d(1)
         self.max_pooling = nn.AdaptiveMaxPool2d(1)
 
-        self.full_connect1 = nn.Conv2d(in_channels=in_planes, out_channels=in_planes//ratio, kernel_size=1, bias=False)
+        self.full_connect1 = nn.Conv2d(in_channels=in_planes, out_channels=in_planes // ratio, kernel_size=1,
+                                       bias=False)
         self.relu = nn.ReLU()
-        self.full_connect2 = nn.Conv2d(in_channels=in_planes//ratio, out_channels=in_planes, kernel_size=1, bias=False)
+        self.full_connect2 = nn.Conv2d(in_channels=in_planes // ratio, out_channels=in_planes, kernel_size=1,
+                                       bias=False)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -74,6 +77,7 @@ class CBAM(nn.Module):
     CBAM: CAM and SAM
     contains both channel attention and spartial attention
     """
+
     def __init__(self, in_channel, ratio=4, kernel_size=7):
         super().__init__()
         self.channel_attention = ChannelAttention(in_planes=in_channel, ratio=ratio)

@@ -10,7 +10,6 @@ import torch.nn.functional as F
 from model.loss import *
 from model.laplacian import *
 from model.refine import *
-# from model.IFNet_BIVSR_7images import *
 from model.LSTM_attention import *
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.autograd.set_detect_anomaly(True)
@@ -26,7 +25,6 @@ class Model:
         self.flownet = VSRbackbone(pretrainedModel)
         self.device()
         self.optimG = AdamW(self.flownet.parameters(), lr=1e-6, weight_decay=1e-3) # use large weight decay may avoid NaN loss
-        self.epe = EPE()
         self.lap = LapLoss()
         self.sobel = SOBEL()
         # if local_rank != -1:
@@ -37,8 +35,6 @@ class Model:
         
     def parameter_loaded_train(self):
         # Load parameters for Ori_IFnet
-
-    
         self.device()
         self.flownet.train()
     
