@@ -40,6 +40,10 @@ class FeaturePyramid(nn.Module):
 
 
 class ImagePyramid(nn.Module):
+    """
+    Three level pyramid. The output size depends on the input parameter c.
+    The output shapes are [ c * H * W, 2c * H/2 * W/2, 4c * H/2 * W/2] where H and W are image shape
+    """
     def __init__(self, c=24):
         super().__init__()
         self.c = c
@@ -50,13 +54,13 @@ class ImagePyramid(nn.Module):
     @staticmethod
     def _make_conv_stage(out_channels):
         return nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=2 * out_channels, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(in_channels=3, out_channels=out_channels // 2, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(inplace=True, negative_slope=0.1),
-            nn.Conv2d(in_channels=2 * out_channels, out_channels=2 * out_channels, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=out_channels // 2, out_channels=out_channels, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(inplace=True, negative_slope=0.1),
-            nn.Conv2d(in_channels=2 * out_channels, out_channels=2 * out_channels, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(inplace=True, negative_slope=0.1),
-            nn.Conv2d(in_channels=2 * out_channels, out_channels=2 * out_channels, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(inplace=True, negative_slope=0.1)
         )
 
