@@ -65,7 +65,7 @@ class VimeoDatasetSep(Dataset):
             img = cv2.imread(imgpaths[i])
             imgs.append(img)
 
-        imgs = self.crop(imgs, 144, 144)
+        imgs = self.crop(imgs, 128, 128)
         # timestep = (ind[1] - ind[0]) * 1.0 / (ind[2] - ind[0] + 1e-6)
         return  imgs
 
