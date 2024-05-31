@@ -9,11 +9,9 @@ import random
 import argparse
 from model.LSTM_attention import *
 from model.RIFE import Model
-# from dataset import *
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data.distributed import DistributedSampler
-# from model.IFNet_BIVSR_7images import *
 from model.VimeoSeptuplet import *
 device = torch.device("cuda")
 
