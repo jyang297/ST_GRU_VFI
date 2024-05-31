@@ -38,13 +38,15 @@ class PyramidFBwardExtractor(nn.Module):
                 forwardFeatureList_d0.append(y_d0)
                 forwardFeatureList_d2.append(y_d2)
                 forwardFeatureList_d4.append(y_d4)
-                return forwardFeatureList_d0, forwardFeatureList_d2, forwardFeatureList_d4
 
             elif pyramid == "feature":
                 y_d2, y_d4 = self.pyramid(x)
                 forwardFeatureList_d2.append(y_d2)
                 forwardFeatureList_d4.append(y_d4)
-                return forwardFeatureList_d2, forwardFeatureList_d4
+        if pyramid == "image":    
+            return forwardFeatureList_d0, forwardFeatureList_d2, forwardFeatureList_d4
+        elif pyramid == "feature":
+            return forwardFeatureList_d2, forwardFeatureList_d4
 
     # Output: B*N*C*H*W
 

@@ -103,11 +103,11 @@ class ConvGRUFeatures(nn.Module):
     Student ConvGRU feature extractor
     """
 
-    def __init__(self, hidden_dim=128, pyramid="image"):
+    def __init__(self, hidden_dim=64, pyramid="image"):
         super().__init__()
         # current encoder: all frames ==> all features
         self.pyramid = pyramid
-        self.hidden_dim = 64
+        self.hidden_dim = hidden_dim
         self.output_plane = self.hidden_dim //2
         self.img2Fencoder = Pyramid_direction_extractor(in_plane=3, hidden_pyramid=self.hidden_dim,
                                                         pyramid=self.pyramid)
@@ -116,8 +116,8 @@ class ConvGRUFeatures(nn.Module):
         self.hidden_dim_d0 = hidden_dim
         self.hidden_dim_d2 = hidden_dim * 2
         self.hidden_dim_d4 = hidden_dim * 4
-        self.forwardgru_d0 = unitConvGRU(hidden_dim=self.hidden_dim_d2, input_dim=self.hidden_dim_d0)
-        self.backwardgru_d0 = unitConvGRU(hidden_dim=self.hidden_dim_d2, input_dim=self.hidden_dim_d0)
+        self.forwardgru_d0 = unitConvGRU(hidden_dim=self.hidden_dim_d0, input_dim=self.hidden_dim_d0)
+        self.backwardgru_d0 = unitConvGRU(hidden_dim=self.hidden_dim_d0, input_dim=self.hidden_dim_d0)
         self.forwardgru_d2 = unitConvGRU(hidden_dim=self.hidden_dim_d2, input_dim=self.hidden_dim_d2)
         self.backwardgru_d2 = unitConvGRU(hidden_dim=self.hidden_dim_d2, input_dim=self.hidden_dim_d2)
         self.forwardgru_d4 = unitConvGRU(hidden_dim=self.hidden_dim_d4, input_dim=self.hidden_dim_d4)
@@ -153,8 +153,8 @@ class ConvGRUFeatures(nn.Module):
         # forward GRU
         # Method A: zero initialize Hiddenlayer
         if self.pyramid == "image":
-            forward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d2, h, w), device=device)
-            backward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d2, h, w), device=device)
+            forward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
+            backward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
         forward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
         backward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
         forward_hidden_initial_d4 = torch.zeros((b, self.hidden_dim_d4, h // 4, w // 4), device=device)
@@ -168,6 +168,7 @@ class ConvGRUFeatures(nn.Module):
                     # for d0 layer
                     fhidden = self.forwardgru_d0(forward_hidden_initial_d0, fallfeatures_d0[i])
                     bhidden = self.backwardgru_d0(backward_hidden_initial_d0, ballfeatures_d0[-i - 1])
+
                 else:
                     fhidden = self.forwardgru_d0(fhidden, fallfeatures_d0[i])
                     bhidden = self.backwardgru_d0(bhidden, ballfeatures_d0[-i - 1])
@@ -184,8 +185,8 @@ class ConvGRUFeatures(nn.Module):
             else:
                 fhidden = self.forwardgru_d2(fhidden, fallfeatures_d2[i])
                 bhidden = self.backwardgru_d2(bhidden, ballfeatures_d2[-i - 1])
-                fhidden_down = self.fdown_c(fhidden)
-                bhidden_down = self.bdown_c(bhidden)
+                fhidden_down = self.fdown_2c(fhidden)
+                bhidden_down = self.bdown_2c(bhidden)
                 fcontextlist_d2.append(fhidden_down)
                 bcontextlist_d2.append(bhidden_down)
         for i in range(0, 4):
@@ -200,14 +201,16 @@ class ConvGRUFeatures(nn.Module):
                 bhidden_down = self.bdown_4c(bhidden)
                 fcontextlist_d4.append(fhidden_down)
                 bcontextlist_d4.append(bhidden_down)
-
-        return fcontextlist_d2, fcontextlist_d4, bcontextlist_d2, bcontextlist_d4
+        if self.pyramid == "image":
+            return fcontextlist_d0, fcontextlist_d2, fcontextlist_d4, bcontextlist_d0, bcontextlist_d2, bcontextlist_d4
+        elif self.pyramid == "feature":
+            return fcontextlist_d2, fcontextlist_d4, bcontextlist_d2, bcontextlist_d4
         # return forwardFeature, backwardFeature
         # Now iterate through septuplet and get three inter frames
 
 
 class TeacherConvGRUFeatures(ConvGRUFeatures):
-    def __init__(self, hidden_dim=128, output_plane=32, pyramid="image"):
+    def __init__(self, hidden_dim=64, output_plane=32, pyramid="image"):
         super().__init__()
 
     def forward(self, allframes):
@@ -230,13 +233,13 @@ class TeacherConvGRUFeatures(ConvGRUFeatures):
             fallfeatures_d2, fallfeatures_d4 = self.img2Fencoder(allframes, flag_st='tea')
             ballfeatures_d2, ballfeatures_d4 = self.img2Bencoder(allframes, flag_st='tea')
 
-        forward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d2, h, w), device=device)
-        backward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
+        forward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
+        backward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
         forward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
         backward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
         forward_hidden_initial_d4 = torch.zeros((b, self.hidden_dim_d4, h // 4, w // 4), device=device)
         backward_hidden_initial_d4 = torch.zeros((b, self.hidden_dim_d4, h // 4, w // 4), device=device)
-
+   
         if self.pyramid == "image":
             for i in range(0, 7):
                 if i == 0:
@@ -250,7 +253,6 @@ class TeacherConvGRUFeatures(ConvGRUFeatures):
                         bhidden_down = self.bdown_c(bhidden)
                         tea_fcontextlist_d0.append(fhidden_down)
                         tea_bcontextlist_d0.append(bhidden_down)
-
         for i in range(0, 7):
             if i == 0:
                 fhidden = self.forwardgru_d2(forward_hidden_initial_d2, fallfeatures_d2[i])
@@ -259,8 +261,8 @@ class TeacherConvGRUFeatures(ConvGRUFeatures):
                 fhidden = self.forwardgru_d2(fhidden, fallfeatures_d2[i])
                 bhidden = self.backwardgru_d2(bhidden, ballfeatures_d2[-i - 1])
                 if i % 2 == 0:
-                    fhidden_down = self.fdown_c(fhidden)
-                    bhidden_down = self.bdown_c(bhidden)
+                    fhidden_down = self.fdown_2c(fhidden)
+                    bhidden_down = self.bdown_2c(bhidden)
                     tea_fcontextlist_d2.append(fhidden_down)
                     tea_bcontextlist_d2.append(bhidden_down)
 
@@ -272,8 +274,8 @@ class TeacherConvGRUFeatures(ConvGRUFeatures):
                 fhidden = self.forwardgru_d4(fhidden, fallfeatures_d4[i])
                 bhidden = self.backwardgru_d4(bhidden, ballfeatures_d4[-i - 1])
                 if i % 2 == 0:
-                    fhidden_down_down = self.fdown_2c(fhidden)
-                    bhidden_down_down = self.bdown_2c(bhidden)
+                    fhidden_down_down = self.fdown_4c(fhidden)
+                    bhidden_down_down = self.bdown_4c(bhidden)
                     tea_fcontextlist_d4.append(fhidden_down_down)
                     tea_bcontextlist_d4.append(bhidden_down_down)
 
@@ -457,7 +459,7 @@ class VSRbackbone(nn.Module):
         self.feature_ofnet = newMergeIFnet(shift_dim=32, pretrained_model=pretrained)
         self.hidden = 64
         self.Stu_ConvGRU = ConvGRUFeatures(hidden_dim=self.hidden, pyramid=self.pyramid)
-        self.tea_ConvGRU = TeacherConvGRUFeatures(hidden_dim=self.hidden)
+        self.tea_ConvGRU = TeacherConvGRUFeatures(hidden_dim=self.hidden, pyramid=self.pyramid)
 
     def forward(self, allframes, training_flag=True):
         # allframes 0<1>2<3>4<5>6
