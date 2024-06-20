@@ -69,3 +69,13 @@ class unitConvGRU(nn.Module):
         q = torch.tanh(self.convq(torch.cat([r * h, x], dim=1)))
         h = (1 - z) * h + z * q
         return h
+
+
+def Gru_ini_Image_resol(hidden_dimension, image):
+    h, w = image.size()[-2:]
+    b = image.size()[0]
+    device = image.device()
+
+    hidden_tensor = torch.zeros((b, hidden_dimension, h, w), device=device)
+
+    return hidden_tensor

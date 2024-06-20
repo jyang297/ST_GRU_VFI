@@ -37,35 +37,6 @@ class Conv2(nn.Module):
         return x
 
 
-cu = 32
-
-
-class Contextnet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = Conv2(3, cu)
-        self.conv2 = Conv2(cu, 2 * cu)
-        self.conv3 = Conv2(2 * cu, 4 * cu)
-        self.conv4 = Conv2(4 * cu, 8 * cu)
-
-    def forward(self, x, flow):
-        x = self.conv1(x)
-        flow = F.interpolate(flow, scale_factor=0.5, mode="bilinear", align_corners=False,
-                             recompute_scale_factor=False) * 0.5
-        f1 = warp(x, flow)
-        x = self.conv2(x)
-        flow = F.interpolate(flow, scale_factor=0.5, mode="bilinear", align_corners=False,
-                             recompute_scale_factor=False) * 0.5
-        f2 = warp(x, flow)
-        x = self.conv3(x)
-        flow = F.interpolate(flow, scale_factor=0.5, mode="bilinear", align_corners=False,
-                             recompute_scale_factor=False) * 0.5
-        f3 = warp(x, flow)
-        x = self.conv4(x)
-        flow = F.interpolate(flow, scale_factor=0.5, mode="bilinear", align_corners=False,
-                             recompute_scale_factor=False) * 0.5
-        f4 = warp(x, flow)
-        return [f1, f2, f3, f4]
 
 
 c = 16

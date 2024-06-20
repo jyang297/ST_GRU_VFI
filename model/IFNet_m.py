@@ -34,7 +34,7 @@ class IFBlock(nn.Module):
             conv(c, c),
             conv(c, c),
         )
-        self.lastconv = nn.ConvTranspose2d(c, 5, 4, 2, 1)
+        self.last_conv = nn.ConvTranspose2d(c, 5, 4, 2, 1)
 
     def forward(self, x, flow, scale):
         if scale != 1:
