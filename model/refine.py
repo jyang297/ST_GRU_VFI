@@ -115,6 +115,7 @@ class Unet_for_3Pyramid(nn.Module):
         self.hs_dim = self.hidden_dim + self.shift_dim  # 64
         self.downDimension = nn.Conv2d(self.hs_dim * 2, self.hs_dim, 3,1,1)
         self.startBlock = nn.Conv2d(in_channels=self.hs_dim*2, out_channels=self.hs_dim, kernel_size=3, stride=1, padding=1)  #hs*2 -> hs*2 = 128
+        self.simplified_startBlock = None
         self.down1 = Conv2(self.hs_dim * 2, self.hs_dim * 2)    # hs*2  == 64 + (32*2) = 128
         self.down2 = Conv2(self.hs_dim * 4, self.hs_dim * 4)    # hs*4  == 256 + (128*2) = 256
         self.down3 = Conv2(self.hs_dim * 8, self.hs_dim * 8)    # hs*8  == 512 + (256*2) = 512
