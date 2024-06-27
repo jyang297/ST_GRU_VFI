@@ -379,7 +379,7 @@ class Loaded_Modified_IFNet(nn.Module):
 # ----------------
 
 
-class NoTeacher_newMergeIFnet(nn.Module):
+class newMergeIFnet(nn.Module):
     def __init__(self, pretrained_model, shift_dim=32, hidden_dim=32, pyramid="image"):
         super().__init__()
         self.pyramid = pyramid
@@ -420,13 +420,22 @@ class NoTeacher_newMergeIFnet(nn.Module):
         predictimage = self.decoder(featureUnet)
         if training:
             if pyramid == "image":
-                tea_featureUnet = 0
+                tea_featureUnet = self.unet_0to1(
+
+                    ori_f0_features, ori_f1_features, forward_shiftedFeature,
+                    backward_shiftedFeature,
+                    tea_forwardContext_d0, tea_forwardContext_d2, tea_forwardContext_d4,
+                    tea_backwardContext_d0, tea_backwardContext_d2, tea_backwardContext_d4)
             elif pyramid == "feature":
-                tea_featureUnet = 0
+                tea_featureUnet = self.unet_0to1(ori_f0_features, ori_f1_features, forward_shiftedFeature,
+                                                 backward_shiftedFeature, tea_forwardContext_d2, tea_forwardContext_d4,
+                                                 tea_backwardContext_d2, tea_backwardContext_d4)
             tea_predictimage = self.decoder(tea_featureUnet)
 
         if training:
-            loss_tea_pred = 0
+            loss_tea_pred = torch.mean(
+                torch.sqrt(torch.pow((tea_predictimage - gt), 2) + self.epsilon ** 2)) + self.loss_census(
+                tea_predictimage, gt)
         else:
             loss_tea_pred = 0
 
@@ -436,8 +445,8 @@ class NoTeacher_newMergeIFnet(nn.Module):
         loss_mse = loss_mse.mean()
 
         # loss_tea = 0
+        merged_teacher = tea_predictimage  # not used. just to avoid error
         flow_teacher = predictimage * 0  # not used. just to avoid error
-        merged_teacher = flow_teacher  # not used. just to avoid error
         mask_list = [flow_teacher, flow_teacher, flow_teacher]
         flow_list = [flow_teacher, flow_teacher, flow_teacher]
         return flow_list, merged_teacher, predictimage, flow_teacher, merged_teacher, loss_tea_pred, loss_mse, loss_pred
@@ -447,7 +456,7 @@ class VSRbackbone(nn.Module):
     def __init__(self, pretrained):
         super().__init__()
         self.pyramid = "image"
-        self.feature_ofnet = NoTeacher_newMergeIFnet(shift_dim=32, pretrained_model=pretrained)
+        self.feature_ofnet = newMergeIFnet(shift_dim=32, pretrained_model=pretrained)
         self.hidden = 64
         self.Stu_ConvGRU = ConvGRUFeatures(hidden_dim=self.hidden, pyramid=self.pyramid)
         # self.tea_ConvGRU = TeacherConvGRUFeatures(hidden_dim=self.hidden, pyramid=self.pyramid)
@@ -468,8 +477,7 @@ class VSRbackbone(nn.Module):
             if training_flag:
                 flow_teacher_list = []
                 output_onlyteacher = []
-                tea_fallfeatures_2d, tea_fallfeatures_4d, tea_ballfeatures_2d, tea_ballfeatures_4d = self.tea_ConvGRU(
-                    allframes)
+                # tea_fallfeatures_2d, tea_fallfeatures_4d, tea_ballfeatures_2d, tea_ballfeatures_4d = self.tea_ConvGRU(allframes)
             f2d = f4d = b2d = b4d = 0
             for i in range(0, 3):
                 f2d += ST.mse(fallfeatures_2d[i], tea_fallfeatures_2d[i])
@@ -499,6 +507,11 @@ class VSRbackbone(nn.Module):
                         forwardContext_d4=fallfeatures_4d[i],
                         backwardContext_d0=ballfeatures_0d[-(i + 1)], backwardContext_d2=ballfeatures_2d[-(i + 1)],
                         backwardContext_d4=ballfeatures_4d[-(i + 1)],
+                        tea_forwardContext_d0=tea_fallfeatures_0d[i], tea_forwardContext_d2=tea_fallfeatures_2d[i],
+                        tea_forwardContext_d4=tea_fallfeatures_4d[i],
+                        tea_backwardContext_d0=tea_ballfeatures_0d[-(i + 1)],
+                        tea_backwardContext_d2=tea_ballfeatures_2d[-(i + 1)],
+                        tea_backwardContext_d4=tea_ballfeatures_4d[-(i + 1)],
                         pyramid="image", training=training_flag)
                 elif self.pyramid == "feature":
                     flow, mask, merged, flow_teacher, merged_teacher, loss_tea_pred, loss_mse, loss_pred = self.feature_ofnet(
@@ -507,6 +520,11 @@ class VSRbackbone(nn.Module):
                         forwardContext_d4=fallfeatures_4d[i],
                         backwardContext_d0=0, backwardContext_d2=ballfeatures_2d[-(i + 1)],
                         backwardContext_d4=ballfeatures_4d[-(i + 1)],
+                        tea_forwardContext_d0=0, tea_forwardContext_d2=tea_fallfeatures_2d[i],
+                        tea_forwardContext_d4=tea_fallfeatures_4d[i],
+                        tea_backwardContext_d0=0,
+                        tea_backwardContext_d2=tea_ballfeatures_2d[-(i + 1)],
+                        tea_backwardContext_d4=tea_ballfeatures_4d[-(i + 1)],
                         pyramid="feature", training=training_flag)
             else:
                 if self.pyramid == "image":
@@ -527,10 +545,10 @@ class VSRbackbone(nn.Module):
                         pyramid="feature", training=training_flag)
 
             # flow, mask, merged, flow_teacher, merged_teacher, loss_tea_pred = self.flownet(allframes)
-            Sum_loss_tea_pred = 0
+            Sum_loss_tea_pred += loss_tea_pred
             Sum_loss_context += loss_pred
             Sum_loss_mse += loss_mse
-            Sum_loss_tea_pred = 0
+            Sum_loss_tea_pred += loss_tea_pred
             output_allframes.append(img0)
             output_teacher.append(img0)
             # output_allframes.append(merged[2])
