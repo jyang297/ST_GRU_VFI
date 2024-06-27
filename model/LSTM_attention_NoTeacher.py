@@ -209,81 +209,6 @@ class ConvGRUFeatures(nn.Module):
         # Now iterate through septuplet and get three inter frames
 
 
-class TeacherConvGRUFeatures(ConvGRUFeatures):
-    def __init__(self, hidden_dim=64, output_plane=32, pyramid="image"):
-        super().__init__()
-
-    def forward(self, allframes):
-        # aframes = allframes_N.view(b,n*c,h,w)
-        # Output: BNCHW
-        b, _, h, w = allframes.size()
-        tea_fcontextlist_d0 = []  # c = 64
-        tea_bcontextlist_d0 = []  # c = 64
-        tea_fcontextlist_d2 = []  # 2c
-        tea_bcontextlist_d2 = []  # 2c
-        tea_fcontextlist_d4 = []  # 4c
-        tea_bcontextlist_d4 = []  # 4c
-
-        if self.pyramid == "image":
-            fallfeatures_d0, fallfeatures_d2, fallfeatures_d4 = self.img2Fencoder(allframes, pyramid="image",
-                                                                                  flag_st='tea')
-            ballfeatures_d0, ballfeatures_d2, ballfeatures_d4 = self.img2Bencoder(allframes, pyramid="image",
-                                                                                  flag_st='tea')
-        elif self.pyramid == "feature":
-            fallfeatures_d2, fallfeatures_d4 = self.img2Fencoder(allframes, flag_st='tea')
-            ballfeatures_d2, ballfeatures_d4 = self.img2Bencoder(allframes, flag_st='tea')
-
-        forward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
-        backward_hidden_initial_d0 = torch.zeros((b, self.hidden_dim_d0, h, w), device=device)
-        forward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
-        backward_hidden_initial_d2 = torch.zeros((b, self.hidden_dim_d2, h // 2, w // 2), device=device)
-        forward_hidden_initial_d4 = torch.zeros((b, self.hidden_dim_d4, h // 4, w // 4), device=device)
-        backward_hidden_initial_d4 = torch.zeros((b, self.hidden_dim_d4, h // 4, w // 4), device=device)
-   
-        if self.pyramid == "image":
-            for i in range(0, 7):
-                if i == 0:
-                    fhidden = self.forwardgru_d0(forward_hidden_initial_d0, fallfeatures_d0[i])
-                    bhidden = self.backwardgru_d0(backward_hidden_initial_d0, ballfeatures_d0[-i - 1])
-                else:
-                    fhidden = self.forwardgru_d0(fhidden, fallfeatures_d0[i])
-                    bhidden = self.backwardgru_d0(bhidden, ballfeatures_d0[-i - 1])
-                    if i % 2 == 0:
-                        fhidden_down = self.fdown_c(fhidden)
-                        bhidden_down = self.bdown_c(bhidden)
-                        tea_fcontextlist_d0.append(fhidden_down)
-                        tea_bcontextlist_d0.append(bhidden_down)
-        for i in range(0, 7):
-            if i == 0:
-                fhidden = self.forwardgru_d2(forward_hidden_initial_d2, fallfeatures_d2[i])
-                bhidden = self.backwardgru_d2(backward_hidden_initial_d2, ballfeatures_d2[-i - 1])
-            else:
-                fhidden = self.forwardgru_d2(fhidden, fallfeatures_d2[i])
-                bhidden = self.backwardgru_d2(bhidden, ballfeatures_d2[-i - 1])
-                if i % 2 == 0:
-                    fhidden_down = self.fdown_2c(fhidden)
-                    bhidden_down = self.bdown_2c(bhidden)
-                    tea_fcontextlist_d2.append(fhidden_down)
-                    tea_bcontextlist_d2.append(bhidden_down)
-
-        for i in range(0, 7):
-            if i == 0:
-                fhidden = self.forwardgru_d4(forward_hidden_initial_d4, fallfeatures_d4[i])
-                bhidden = self.backwardgru_d4(backward_hidden_initial_d4, ballfeatures_d4[-i - 1])
-            else:
-                fhidden = self.forwardgru_d4(fhidden, fallfeatures_d4[i])
-                bhidden = self.backwardgru_d4(bhidden, ballfeatures_d4[-i - 1])
-                if i % 2 == 0:
-                    fhidden_down_down = self.fdown_4c(fhidden)
-                    bhidden_down_down = self.bdown_4c(bhidden)
-                    tea_fcontextlist_d4.append(fhidden_down_down)
-                    tea_bcontextlist_d4.append(bhidden_down_down)
-
-        return tea_fcontextlist_d0, tea_fcontextlist_d2, tea_fcontextlist_d4, tea_bcontextlist_d0, tea_bcontextlist_d2, tea_bcontextlist_d4
-        # return forwardFeature, backwardFeature
-        # Now iterate through septuplet and get three inter frames
-
-
 class SingleImageExtractor(nn.Module):
     def __init__(self, in_plane=3, out_plane=32, att_mode='se'):
         super().__init__()
@@ -527,10 +452,9 @@ class VSRbackbone(nn.Module):
                         pyramid="feature", training=training_flag)
 
             # flow, mask, merged, flow_teacher, merged_teacher, loss_tea_pred = self.flownet(allframes)
-            Sum_loss_tea_pred = 0
+            Sum_loss_tea_pred = loss_pred.clone().detach()
             Sum_loss_context += loss_pred
             Sum_loss_mse += loss_mse
-            Sum_loss_tea_pred = 0
             output_allframes.append(img0)
             output_teacher.append(img0)
             # output_allframes.append(merged[2])
